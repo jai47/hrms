@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import Link from "next/link"
 import { Palette, Wifi, Loader2, Check } from "lucide-react"
 import { SETTING_KEYS } from "@/lib/settings-keys"
+import { ChangePasswordForm } from "@/components/account/change-password-form"
 
 type Props = {
   initialDbSettings: Record<string, string>
@@ -62,12 +63,12 @@ export function SettingsForm({ initialDbSettings, counts }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Settings</h1>
           <p className="text-gray-500">Configure your HRMS preferences</p>
         </div>
-        <Button onClick={save} disabled={saving}>
+        <Button onClick={save} disabled={saving} className="w-full sm:w-auto shrink-0">
           {saving ? (
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
           ) : saved ? (
@@ -76,6 +77,8 @@ export function SettingsForm({ initialDbSettings, counts }: Props) {
           {saved ? "Saved" : "Save Settings"}
         </Button>
       </div>
+
+      <ChangePasswordForm />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">

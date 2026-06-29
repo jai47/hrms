@@ -94,7 +94,7 @@ export function EmployeeDashboard({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Welcome, {employeeName}</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Welcome, {employeeName}</h1>
         <p className="text-gray-500 mt-1">Your personal dashboard — {monthLabel}</p>
       </div>
 
@@ -152,10 +152,16 @@ export function EmployeeDashboard({
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="on-time">
-            <TabsList className="grid w-full grid-cols-3 max-w-lg">
-              <TabsTrigger value="on-time">On Time ({onTimeRecords.length})</TabsTrigger>
-              <TabsTrigger value="late">Late ({lateRecords.length})</TabsTrigger>
-              <TabsTrigger value="absent">Absent / Leave ({absentLeaveRecords.length})</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 sm:max-w-lg h-auto gap-1 p-1">
+              <TabsTrigger value="on-time" className="text-xs sm:text-sm py-2">
+                On Time ({onTimeRecords.length})
+              </TabsTrigger>
+              <TabsTrigger value="late" className="text-xs sm:text-sm py-2">
+                Late ({lateRecords.length})
+              </TabsTrigger>
+              <TabsTrigger value="absent" className="text-xs sm:text-sm py-2">
+                Absent / Leave ({absentLeaveRecords.length})
+              </TabsTrigger>
             </TabsList>
             <TabsContent value="on-time">
               <AttendanceTable records={onTimeRecords} />

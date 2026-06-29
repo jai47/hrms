@@ -78,6 +78,7 @@ export const NAV_ITEMS: Omit<NavItem, "icon">[] = [
   { name: "Biometric", href: "/biometric", roles: ["ADMIN", "HR_MANAGER"] },
   { name: "Documents", href: "/documents", roles: ["ADMIN", "HR_MANAGER", "MANAGER", "EMPLOYEE"] },
   { name: "Notifications", href: "/notifications", roles: ["ADMIN", "HR_MANAGER", "MANAGER", "EMPLOYEE"] },
+  { name: "Account", href: "/account", roles: ["ADMIN", "HR_MANAGER", "MANAGER", "EMPLOYEE"] },
   { name: "Settings", href: "/settings", roles: ["ADMIN", "HR_MANAGER"] },
 ]
 
@@ -93,6 +94,7 @@ export const ROUTE_ACCESS: Array<{ prefix: string; roles: Role[] }> = [
   { prefix: "/attendance/checkin", roles: ["ADMIN", "HR_MANAGER", "MANAGER"] },
   { prefix: "/performance", roles: ["ADMIN", "HR_MANAGER", "MANAGER"] },
   { prefix: "/work-logs", roles: ["ADMIN", "HR_MANAGER", "MANAGER", "EMPLOYEE"] },
+  { prefix: "/account", roles: ["ADMIN", "HR_MANAGER", "MANAGER", "EMPLOYEE"] },
 ]
 
 export function getNavForRole(role: string) {

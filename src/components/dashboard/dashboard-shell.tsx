@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation"
 import { Sidebar } from "@/components/dashboard/sidebar"
 import { Header } from "@/components/dashboard/header"
 import { WorkLogReminderBanner } from "@/components/dashboard/work-log-reminder-banner"
+import { SidebarProvider } from "@/components/dashboard/sidebar-context"
 import { canAccessRoute } from "@/lib/rbac"
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
@@ -30,7 +31,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   if (status === "loading") {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-[100dvh] items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
     )
@@ -41,13 +42,17 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden lg:ml-0">
-        <Header />
-        <WorkLogReminderBanner />
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">{children}</main>
+    <SidebarProvider>
+      <div className="flex h-[100dvh] bg-gray-50 overflow-hidden">
+        <Sidebar />
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <Header />
+          <WorkLogReminderBanner />
+          <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 lg:p-6">
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </SidebarProvider>
   )
 }
