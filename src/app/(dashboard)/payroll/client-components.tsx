@@ -167,9 +167,9 @@ export function PayrollPanel({
                   <tr className="border-b text-left text-sm text-gray-500">
                     <th className="py-3 px-2">Employee</th>
                     <th className="py-3 px-2">Department</th>
-                    <th className="py-3 px-2">Paid Days</th>
-                    <th className="py-3 px-2">Gross</th>
-                    <th className="py-3 px-2">Deductions</th>
+                      <th className="py-3 px-2">Paid Days</th>
+                      <th className="py-3 px-2">Earned</th>
+                      <th className="py-3 px-2">Deductions</th>
                     <th className="py-3 px-2">Net Pay</th>
                     <th className="py-3 px-2">Status</th>
                     <th className="py-3 px-2"></th>

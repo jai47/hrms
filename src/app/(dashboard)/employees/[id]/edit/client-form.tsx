@@ -39,15 +39,16 @@ const employeeSchema = z.object({
   emergencyPhone: z.string().optional(),
   biometricId: z.string().optional(),
   role: z.enum(["ADMIN", "HR_MANAGER", "MANAGER", "EMPLOYEE"]),
+  employmentStatus: z.enum(["ACTIVE", "INACTIVE", "ON_LEAVE", "TERMINATED", "PROBATION"]),
 })
 
 type EmployeeForm = z.infer<typeof employeeSchema>
-
 type Department = { id: string; name: string }
 
-export default function NewEmployeePage() {
+export default function EditEmployeeForm({ employeeId }: { employeeId: string }) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const [loadingData, setLoadingData] = useState(true)
   const [departments, setDepartments] = useState<Department[]>([])
   const [submitError, setSubmitError] = useState("")
 
@@ -55,21 +56,48 @@ export default function NewEmployeePage() {
     register,
     handleSubmit,
     control,
+    reset,
     formState: { errors },
   } = useForm<EmployeeForm>({
     resolver: zodResolver(employeeSchema),
-    defaultValues: {
-      hireDate: new Date().toISOString().split("T")[0],
-      role: "EMPLOYEE",
-    },
   })
 
   useEffect(() => {
-    fetch("/api/departments")
-      .then((r) => r.json())
-      .then((data) => setDepartments(data.departments || []))
-      .catch(() => setDepartments([]))
-  }, [])
+    Promise.all([
+      fetch(`/api/employees/${employeeId}`).then((r) => r.json()),
+      fetch("/api/departments").then((r) => r.json()),
+    ])
+      .then(([employee, deptData]) => {
+        if (employee.error) throw new Error(employee.error)
+        setDepartments(deptData.departments || [])
+        reset({
+          employeeId: employee.employeeId,
+          firstName: employee.firstName,
+          lastName: employee.lastName,
+          email: employee.email,
+          phone: employee.phone || "",
+          dateOfBirth: employee.dateOfBirth
+            ? new Date(employee.dateOfBirth).toISOString().split("T")[0]
+            : "",
+          gender: employee.gender || undefined,
+          address: employee.address || "",
+          departmentId: employee.departmentId || "",
+          position: employee.position,
+          hireDate: new Date(employee.hireDate).toISOString().split("T")[0],
+          salary: employee.salary != null ? String(employee.salary) : "",
+          bankAccount: employee.bankAccount || "",
+          emergencyContact: employee.emergencyContact || "",
+          emergencyPhone: employee.emergencyPhone || "",
+          biometricId: employee.biometricId || "",
+          role: employee.role,
+          employmentStatus: employee.employmentStatus,
+        })
+      })
+      .catch((err) => {
+        setSubmitError(err instanceof Error ? err.message : "Failed to load employee")
+      })
+      .finally(() => setLoadingData(false))
+  }, [employeeId, reset])
 
   const onSubmit = async (data: EmployeeForm) => {
     setIsLoading(true)
@@ -77,41 +105,53 @@ export default function NewEmployeePage() {
     try {
       const payload = {
         ...data,
-        departmentId:
-          data.departmentId && data.departmentId !== "none" ? data.departmentId : undefined,
-        gender: data.gender || undefined,
+        departmentId: data.departmentId && data.departmentId !== "none" ? data.departmentId : null,
+        gender: data.gender || null,
+        phone: data.phone || null,
+        address: data.address || null,
+        bankAccount: data.bankAccount || null,
+        emergencyContact: data.emergencyContact || null,
+        emergencyPhone: data.emergencyPhone || null,
+        biometricId: data.biometricId || null,
+        dateOfBirth: data.dateOfBirth || null,
+        salary: data.salary ? parseFloat(data.salary) : null,
       }
 
-      const response = await fetch("/api/employees", {
-        method: "POST",
+      const response = await fetch(`/api/employees/${employeeId}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       })
 
       const result = await response.json()
+      if (!response.ok) throw new Error(result.error || "Failed to update employee")
 
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to create employee")
-      }
-
-      router.push("/employees")
+      router.push(`/employees/${employeeId}`)
       router.refresh()
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "Failed to create employee")
+      setSubmitError(error instanceof Error ? error.message : "Failed to update employee")
     } finally {
       setIsLoading(false)
     }
   }
 
+  if (loadingData) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Link href="/employees" className="p-2 hover:bg-gray-100 rounded-lg">
+        <Link href={`/employees/${employeeId}`} className="p-2 hover:bg-gray-100 rounded-lg">
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Add Employee</h1>
-          <p className="text-gray-500">Create a new employee record</p>
+          <h1 className="text-3xl font-bold text-gray-900">Edit Employee</h1>
+          <p className="text-gray-500">Update employee details and department</p>
         </div>
       </div>
 
@@ -129,71 +169,27 @@ export default function NewEmployeePage() {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="employeeId">Employee ID *</Label>
-                <Input id="employeeId" placeholder="EMP-001" {...register("employeeId")} />
+                <Input id="employeeId" {...register("employeeId")} />
                 {errors.employeeId && (
                   <p className="text-sm text-red-500">{errors.employeeId.message}</p>
                 )}
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="firstName">First Name *</Label>
-                <Input id="firstName" placeholder="John" {...register("firstName")} />
-                {errors.firstName && (
-                  <p className="text-sm text-red-500">{errors.firstName.message}</p>
-                )}
+                <Input id="firstName" {...register("firstName")} />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="lastName">Last Name *</Label>
-                <Input id="lastName" placeholder="Doe" {...register("lastName")} />
-                {errors.lastName && (
-                  <p className="text-sm text-red-500">{errors.lastName.message}</p>
-                )}
+                <Input id="lastName" {...register("lastName")} />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="email">Email *</Label>
-                <Input id="email" type="email" placeholder="john.doe@company.com" {...register("email")} />
-                {errors.email && (
-                  <p className="text-sm text-red-500">{errors.email.message}</p>
-                )}
+                <Input id="email" type="email" {...register("email")} />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone</Label>
-                <Input id="phone" placeholder="+1 (555) 123-4567" {...register("phone")} />
+                <Input id="phone" {...register("phone")} />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="dateOfBirth">Date of Birth</Label>
-                <Input id="dateOfBirth" type="date" {...register("dateOfBirth")} />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Gender</Label>
-                <Controller
-                  name="gender"
-                  control={control}
-                  render={({ field }) => (
-                    <Select value={field.value || ""} onValueChange={field.onChange}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select gender" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="MALE">Male</SelectItem>
-                        <SelectItem value="FEMALE">Female</SelectItem>
-                        <SelectItem value="OTHER">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </div>
-
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="address">Address</Label>
-                <Textarea id="address" placeholder="123 Main St, City, State" {...register("address")} rows={2} />
-              </div>
-
               <div className="space-y-2">
                 <Label>Department</Label>
                 <Controller
@@ -205,7 +201,7 @@ export default function NewEmployeePage() {
                       onValueChange={(v) => field.onChange(v === "none" ? "" : v)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select department (optional)" />
+                        <SelectValue placeholder="Select department" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">No department</SelectItem>
@@ -219,48 +215,18 @@ export default function NewEmployeePage() {
                   )}
                 />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="position">Position *</Label>
-                <Input id="position" placeholder="Software Engineer" {...register("position")} />
-                {errors.position && (
-                  <p className="text-sm text-red-500">{errors.position.message}</p>
-                )}
+                <Input id="position" {...register("position")} />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="hireDate">Hire Date *</Label>
                 <Input id="hireDate" type="date" {...register("hireDate")} />
-                {errors.hireDate && (
-                  <p className="text-sm text-red-500">{errors.hireDate.message}</p>
-                )}
               </div>
-
               <div className="space-y-2">
-                <Label htmlFor="salary">Monthly Salary</Label>
-                <Input id="salary" type="number" step="0.01" placeholder="50000" {...register("salary")} />
+                <Label htmlFor="salary">Monthly Salary (₹)</Label>
+                <Input id="salary" type="number" step="0.01" {...register("salary")} />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="bankAccount">Bank Account</Label>
-                <Input id="bankAccount" placeholder="Account number" {...register("bankAccount")} />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="emergencyContact">Emergency Contact</Label>
-                <Input id="emergencyContact" placeholder="Jane Doe" {...register("emergencyContact")} />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="emergencyPhone">Emergency Phone</Label>
-                <Input id="emergencyPhone" placeholder="+1 (555) 123-4567" {...register("emergencyPhone")} />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="biometricId">Biometric ID</Label>
-                <Input id="biometricId" placeholder="Device-specific ID" {...register("biometricId")} />
-              </div>
-
               <div className="space-y-2">
                 <Label>Role</Label>
                 <Controller
@@ -269,7 +235,7 @@ export default function NewEmployeePage() {
                   render={({ field }) => (
                     <Select value={field.value} onValueChange={field.onChange}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select role" />
+                        <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="EMPLOYEE">Employee</SelectItem>
@@ -281,22 +247,44 @@ export default function NewEmployeePage() {
                   )}
                 />
               </div>
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Controller
+                  name="employmentStatus"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ACTIVE">Active</SelectItem>
+                        <SelectItem value="INACTIVE">Inactive</SelectItem>
+                        <SelectItem value="ON_LEAVE">On Leave</SelectItem>
+                        <SelectItem value="PROBATION">Probation</SelectItem>
+                        <SelectItem value="TERMINATED">Terminated</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="address">Address</Label>
+                <Textarea id="address" {...register("address")} rows={2} />
+              </div>
             </div>
-
             <div className="flex justify-end gap-4 pt-4 border-t">
-              <Link href="/employees">
-                <Button type="button" variant="outline">
-                  Cancel
-                </Button>
+              <Link href={`/employees/${employeeId}`}>
+                <Button type="button" variant="outline">Cancel</Button>
               </Link>
               <Button type="submit" disabled={isLoading}>
                 {isLoading ? (
                   <span className="flex items-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Creating...
+                    Saving...
                   </span>
                 ) : (
-                  "Create Employee"
+                  "Save Changes"
                 )}
               </Button>
             </div>

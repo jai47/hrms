@@ -63,7 +63,7 @@ export default async function EmployeeDetailPage({
           <p className="text-gray-500">{employee.employeeId} • {employee.email}</p>
         </div>
         <div className="flex gap-2">
-          <Link href={`/employees/${employee.id}`}>
+          <Link href={`/employees/${employee.id}/edit`}>
             <Button variant="outline">
               <Edit className="h-4 w-4 mr-2" />
               Edit

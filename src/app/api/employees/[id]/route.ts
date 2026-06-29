@@ -1,6 +1,23 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
+import { canManageEmployees } from "@/lib/rbac"
+
+function isValidObjectId(value: string): boolean {
+  return /^[a-f\d]{24}$/i.test(value)
+}
+
+function emptyToNull(value: unknown): string | null {
+  if (value === undefined || value === null || value === "") return null
+  return String(value)
+}
+
+function resolveDepartmentId(body: { departmentId?: unknown }): string | null {
+  const raw = body.departmentId
+  if (raw === null || raw === undefined || raw === "" || raw === "none") return null
+  const id = String(raw)
+  return isValidObjectId(id) ? id : null
+}
 
 export async function GET(
   request: NextRequest,
@@ -62,8 +79,13 @@ export async function PUT(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    if (!canManageEmployees(session.user.role)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+
     const { id } = await params
     const body = await request.json()
+    const departmentId = resolveDepartmentId(body)
 
     const existingEmployee = await prisma.employee.findFirst({
       where: {
@@ -87,25 +109,34 @@ export async function PUT(
       )
     }
 
+    if (departmentId) {
+      const department = await prisma.department.findUnique({
+        where: { id: departmentId },
+      })
+      if (!department) {
+        return NextResponse.json({ error: "Selected department not found" }, { status: 400 })
+      }
+    }
+
     const employee = await prisma.employee.update({
       where: { id },
       data: {
-        employeeId: body.employeeId,
-        firstName: body.firstName,
-        lastName: body.lastName,
-        email: body.email,
-        phone: body.phone,
+        employeeId: body.employeeId?.trim(),
+        firstName: body.firstName?.trim(),
+        lastName: body.lastName?.trim(),
+        email: body.email?.trim().toLowerCase(),
+        phone: emptyToNull(body.phone),
         dateOfBirth: body.dateOfBirth ? new Date(body.dateOfBirth) : null,
-        gender: body.gender,
-        address: body.address,
-        departmentId: body.departmentId,
-        position: body.position,
+        gender: body.gender || null,
+        address: emptyToNull(body.address),
+        departmentId,
+        position: body.position?.trim(),
         hireDate: body.hireDate ? new Date(body.hireDate) : undefined,
-        salary: body.salary ? parseFloat(body.salary) : null,
-        bankAccount: body.bankAccount,
-        emergencyContact: body.emergencyContact,
-        emergencyPhone: body.emergencyPhone,
-        biometricId: body.biometricId,
+        salary: body.salary != null ? parseFloat(String(body.salary)) : null,
+        bankAccount: emptyToNull(body.bankAccount),
+        emergencyContact: emptyToNull(body.emergencyContact),
+        emergencyPhone: emptyToNull(body.emergencyPhone),
+        biometricId: emptyToNull(body.biometricId),
         role: body.role,
         employmentStatus: body.employmentStatus,
       },
@@ -130,6 +161,10 @@ export async function DELETE(
     const session = await auth()
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    if (!canManageEmployees(session.user.role)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
     const { id } = await params

@@ -219,22 +219,21 @@ export async function calculatePaySlip(
   }
 
   const paidDays = presentDays + halfDays + paidLeaveDays
-  const grossPay = Math.round(dailyRate * paidDays * 100) / 100
-  const absentDeduction = Math.round(dailyRate * absentDays * 100) / 100
-  const unpaidLeaveDeduction = Math.round(dailyRate * unpaidLeaveDays * 100) / 100
+  const earnedPay = Math.round(dailyRate * paidDays * 100) / 100
+  const lossOfPayDays = absentDays + unpaidLeaveDays
+  const lossOfPayAmount = Math.round(dailyRate * lossOfPayDays * 100) / 100
   const lateDeduction = Math.round(dailyRate * 0.1 * lateDays * 100) / 100
-  const deductions =
-    Math.round((absentDeduction + unpaidLeaveDeduction + lateDeduction) * 100) / 100
-  const netPay = Math.max(0, Math.round((grossPay - deductions) * 100) / 100)
+  // Absent/unpaid days are already excluded from earnedPay — only deduct late penalties
+  const deductions = lateDeduction
+  const netPay = Math.max(0, Math.round((earnedPay - deductions) * 100) / 100)
 
   if (lateDays > 0) {
-    notes.push(`${lateDays} late day(s): 10% daily rate deduction each`)
+    notes.push(`${lateDays} late day(s): 10% daily rate deduction (₹${lateDeduction.toFixed(2)})`)
   }
-  if (unpaidLeaveDays > 0) {
-    notes.push(`${unpaidLeaveDays} unpaid leave day(s) deducted`)
-  }
-  if (absentDays > 0) {
-    notes.push(`${absentDays} absent day(s) without approved leave`)
+  if (lossOfPayDays > 0) {
+    notes.push(
+      `${lossOfPayDays} loss-of-pay day(s) (${absentDays} absent, ${unpaidLeaveDays} unpaid leave) — ₹${lossOfPayAmount.toFixed(2)} not earned`
+    )
   }
 
   return {
@@ -247,7 +246,7 @@ export async function calculatePaySlip(
     paidLeaveDays,
     unpaidLeaveDays,
     lateDays,
-    grossPay,
+    grossPay: earnedPay,
     deductions,
     netPay,
     breakdown: {

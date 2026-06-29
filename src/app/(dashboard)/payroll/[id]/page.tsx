@@ -144,11 +144,24 @@ export default async function PaySlipDetailPage({
                   <td className="py-3 px-4 text-right font-medium">{formatCurrency(paySlip.baseSalary)}</td>
                 </tr>
                 <tr className="border-b">
-                  <td className="py-3 px-4 text-gray-600">Gross Pay</td>
+                  <td className="py-3 px-4 text-gray-600">Earned Pay ({paySlip.paidDays} paid days)</td>
                   <td className="py-3 px-4 text-right font-medium">{formatCurrency(paySlip.grossPay)}</td>
                 </tr>
+                {(paySlip.absentDays + paySlip.unpaidLeaveDays > 0) && (
+                  <tr className="border-b">
+                    <td className="py-3 px-4 text-gray-600">
+                      Loss of Pay ({paySlip.absentDays + paySlip.unpaidLeaveDays} days)
+                    </td>
+                    <td className="py-3 px-4 text-right font-medium text-orange-600">
+                      -{formatCurrency(
+                        (paySlip.baseSalary / paySlip.workingDays) *
+                          (paySlip.absentDays + paySlip.unpaidLeaveDays)
+                      )}
+                    </td>
+                  </tr>
+                )}
                 <tr className="border-b">
-                  <td className="py-3 px-4 text-gray-600">Deductions</td>
+                  <td className="py-3 px-4 text-gray-600">Other Deductions (late penalty)</td>
                   <td className="py-3 px-4 text-right font-medium text-red-600">
                     -{formatCurrency(paySlip.deductions)}
                   </td>
