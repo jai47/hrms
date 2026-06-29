@@ -1,0 +1,190 @@
+import { prisma } from "@/lib/prisma"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Users, Clock, Calendar, TrendingUp } from "lucide-react"
+import { formatDate } from "@/lib/utils"
+import { Badge } from "@/components/ui/badge"
+
+async function getStats() {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+
+  const [
+    totalEmployees,
+    presentToday,
+    onLeaveToday,
+    pendingLeaves,
+    recentAttendances,
+    upcomingBirthdays,
+  ] = await Promise.all([
+    prisma.employee.count({ where: { employmentStatus: "ACTIVE" } }),
+    prisma.attendance.count({
+      where: {
+        date: { gte: today, lt: tomorrow },
+        status: { in: ["PRESENT", "LATE"] },
+      },
+    }),
+    prisma.attendance.count({
+      where: {
+        date: { gte: today, lt: tomorrow },
+        status: "ON_LEAVE",
+      },
+    }),
+    prisma.leaveRequest.count({ where: { status: "PENDING" } }),
+    prisma.attendance.findMany({
+      where: { date: { gte: today, lt: tomorrow } },
+      include: { employee: true },
+      orderBy: { checkIn: "desc" },
+      take: 5,
+    }),
+    prisma.employee.findMany({
+      where: {
+        dateOfBirth: {
+          gte: today,
+          lt: new Date(today.getFullYear(), today.getMonth() + 7, today.getDate()),
+        },
+        employmentStatus: "ACTIVE",
+      },
+      take: 5,
+      orderBy: { dateOfBirth: "asc" },
+    }),
+  ])
+
+  return {
+    totalEmployees,
+    presentToday,
+    onLeaveToday,
+    pendingLeaves,
+    recentAttendances,
+    upcomingBirthdays,
+  }
+}
+
+export default async function DashboardPage() {
+  const stats = await getStats()
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+        <p className="text-gray-500 mt-1">Overview of your HR metrics</p>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Employees</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalEmployees}</div>
+            <p className="text-xs text-muted-foreground">Active employees</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Present Today</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.presentToday}</div>
+            <p className="text-xs text-muted-foreground">Checked in today</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">On Leave Today</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.onLeaveToday}</div>
+            <p className="text-xs text-muted-foreground">Employees on leave</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pending Leaves</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.pendingLeaves}</div>
+            <p className="text-xs text-muted-foreground">Awaiting approval</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Activity & Upcoming Birthdays */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Check-ins</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {stats.recentAttendances.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No check-ins today</p>
+            ) : (
+              <div className="space-y-3">
+                {stats.recentAttendances.map((attendance) => (
+                  <div key={attendance.id} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-medium">
+                        {attendance.employee.firstName[0]}{attendance.employee.lastName[0]}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">{attendance.employee.firstName} {attendance.employee.lastName}</p>
+                        <p className="text-xs text-muted-foreground">{attendance.employee.employeeId}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <Badge variant={attendance.status === "PRESENT" ? "success" : "warning"}>
+                        {attendance.status}
+                      </Badge>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {attendance.checkIn ? formatDate(attendance.checkIn) : "--"}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Upcoming Birthdays</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {stats.upcomingBirthdays.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No upcoming birthdays</p>
+            ) : (
+              <div className="space-y-3">
+                {stats.upcomingBirthdays.map((emp) => (
+                  <div key={emp.id} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-full bg-pink-100 flex items-center justify-center text-pink-600 text-sm font-medium">
+                        {emp.firstName[0]}{emp.lastName[0]}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">{emp.firstName} {emp.lastName}</p>
+                        <p className="text-xs text-muted-foreground">{emp.employeeId}</p>
+                      </div>
+                    </div>
+                    <span className="text-sm text-muted-foreground">
+                      {emp.dateOfBirth ? formatDate(emp.dateOfBirth) : "--"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}

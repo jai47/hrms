@@ -1,0 +1,71 @@
+services:
+  mongodb:
+    image: mongo:7
+    container_name: hrms-mongodb
+    restart: unless-stopped
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mongosh",
+          "--quiet",
+          "--eval",
+          "try { const s = rs.status(); if (s.members[0].stateStr === 'PRIMARY') quit(0); quit(1); } catch (e) { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'mongodb:27017' }] }); quit(1); }",
+        ]
+      interval: 5s
+      timeout: 30s
+      retries: 15
+      start_period: 15s
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migrator
+    container_name: hrms-migrate
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: mongodb://mongodb:27017/hrms?replicaSet=rs0
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@company.com}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-Admin@123}
+    restart: "no"
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    container_name: hrms-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: mongodb://mongodb:27017/hrms?replicaSet=rs0
+      AUTH_SECRET: ${NEXTAUTH_SECRET:-change-this-secret-in-production}
+      AUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      AUTH_TRUST_HOST: "true"
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-change-this-secret-in-production}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      BIOMETRIC_API_KEY: ${BIOMETRIC_API_KEY:-dev-biometric-api-key}
+      CRON_SECRET: ${CRON_SECRET:-dev-cron-secret}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-HRMS <noreply@company.com>}
+
+volumes:
+  mongodb_data:
