@@ -50,6 +50,10 @@ export function canViewAllLeaves(role: string): boolean {
   return hasAnyRole(role, ["ADMIN", "HR_MANAGER", "MANAGER"])
 }
 
+export function canViewAllWorkLogs(role: string): boolean {
+  return hasAnyRole(role, ["ADMIN", "HR_MANAGER", "MANAGER"])
+}
+
 export type NavItem = {
   name: string
   href: string
@@ -68,6 +72,7 @@ export const NAV_ITEMS: Omit<NavItem, "icon">[] = [
   { name: "Check In/Out", href: "/attendance/checkin", roles: ["ADMIN", "HR_MANAGER", "MANAGER", "EMPLOYEE"] },
   { name: "Time Reports", href: "/attendance/reports", roles: ["ADMIN", "HR_MANAGER", "MANAGER"] },
   { name: "Leaves", href: "/leaves", roles: ["ADMIN", "HR_MANAGER", "MANAGER", "EMPLOYEE"] },
+  { name: "Work Logs", href: "/work-logs", roles: ["ADMIN", "HR_MANAGER", "MANAGER", "EMPLOYEE"] },
   { name: "Payroll", href: "/payroll", roles: ["ADMIN", "HR_MANAGER"] },
   { name: "Performance", href: "/performance", roles: ["ADMIN", "HR_MANAGER", "MANAGER"] },
   { name: "Biometric", href: "/biometric", roles: ["ADMIN", "HR_MANAGER"] },
@@ -86,6 +91,7 @@ export const ROUTE_ACCESS: Array<{ prefix: string; roles: Role[] }> = [
   { prefix: "/attendance/records", roles: ["ADMIN", "HR_MANAGER", "MANAGER"] },
   { prefix: "/attendance/reports", roles: ["ADMIN", "HR_MANAGER", "MANAGER"] },
   { prefix: "/performance", roles: ["ADMIN", "HR_MANAGER", "MANAGER"] },
+  { prefix: "/work-logs", roles: ["ADMIN", "HR_MANAGER", "MANAGER", "EMPLOYEE"] },
 ]
 
 export function getNavForRole(role: string) {

@@ -49,6 +49,7 @@ model Employee {
   issueComments     IssueComment[]
   timeEntries       TimeEntry[]
   paySlips          PaySlip[]
+  dailyWorkLogs     DailyWorkLog[]
 
   @@map("employees")
 }
@@ -207,6 +208,25 @@ model Notification {
   @@map("notifications")
 }
 
+model DailyWorkLog {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  employeeId  String   @db.ObjectId
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  date        DateTime @db.Date
+  summary     String
+  tasksDone   String?
+  blockers    String?
+  nextSteps   String?
+  hoursWorked Float?
+  submittedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([employeeId, date])
+  @@index([date])
+  @@map("daily_work_logs")
+}
+
 model BiometricDevice {
   id            String              @id @default(auto()) @map("_id") @db.ObjectId
   deviceId      String              @unique
@@ -347,6 +367,7 @@ enum NotificationType {
   LEAVE_REJECTED
   PERFORMANCE_REVIEW
   ATTENDANCE_ALERT
+  WORK_LOG_REMINDER
   DOCUMENT_EXPIRY
   ISSUE_ASSIGNED
   SYSTEM
