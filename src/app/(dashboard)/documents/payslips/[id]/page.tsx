@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma"
-import { requireRoles } from "@/lib/auth-guard"
+import { requireAuth } from "@/lib/auth-guard"
 import { notFound } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -7,17 +7,20 @@ import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import type { PaySlipBreakdown } from "@/lib/payroll"
-import { PrintButton } from "../print-button"
-import { PushPayslipButton } from "../push-button"
+import { PrintButton } from "@/app/(dashboard)/payroll/print-button"
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
 ]
 
-async function getPaySlip(id: string) {
-  return prisma.paySlip.findUnique({
-    where: { id },
+async function getPaySlip(id: string, employeeId: string) {
+  return prisma.paySlip.findFirst({
+    where: {
+      id,
+      employeeId,
+      status: { in: ["FINALIZED", "PAID"] },
+    },
     include: {
       employee: {
         select: {
@@ -34,14 +37,14 @@ async function getPaySlip(id: string) {
   })
 }
 
-export default async function PaySlipDetailPage({
+export default async function DocumentPaySlipPage({
   params,
 }: {
   params: Promise<{ id: string }>
 }) {
-  await requireRoles(["ADMIN", "HR_MANAGER"])
+  const session = await requireAuth()
   const { id } = await params
-  const paySlip = await getPaySlip(id)
+  const paySlip = await getPaySlip(id, session.user.id)
 
   if (!paySlip) notFound()
 
@@ -51,7 +54,7 @@ export default async function PaySlipDetailPage({
     <div className="space-y-6 max-w-4xl mx-auto">
       <div className="flex items-center justify-between print:hidden">
         <div className="flex items-center gap-4">
-          <Link href="/payroll" className="p-2 hover:bg-gray-100 rounded-lg">
+          <Link href="/documents?tab=payslips" className="p-2 hover:bg-gray-100 rounded-lg">
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <div>
@@ -61,10 +64,7 @@ export default async function PaySlipDetailPage({
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <PushPayslipButton paySlipId={paySlip.id} status={paySlip.status} variant="outline" size="default" />
-          <PrintButton />
-        </div>
+        <PrintButton />
       </div>
 
       <Card className="print:shadow-none print:border-0">
@@ -76,16 +76,8 @@ export default async function PaySlipDetailPage({
                 Pay period: {MONTHS[paySlip.periodMonth - 1]} {paySlip.periodYear}
               </p>
             </div>
-            <Badge
-              variant={
-                paySlip.status === "PAID"
-                  ? "success"
-                  : paySlip.status === "FINALIZED"
-                    ? "info"
-                    : "secondary"
-              }
-            >
-              {paySlip.status === "FINALIZED" ? "PUSHED" : paySlip.status}
+            <Badge variant={paySlip.status === "PAID" ? "success" : "info"}>
+              {paySlip.status === "FINALIZED" ? "AVAILABLE" : paySlip.status}
             </Badge>
           </div>
         </CardHeader>
@@ -123,28 +115,12 @@ export default async function PaySlipDetailPage({
               <p className="text-lg font-semibold">{paySlip.presentDays}</p>
             </div>
             <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-xs text-gray-500">Half Days</p>
-              <p className="text-lg font-semibold">{paySlip.halfDays}</p>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-xs text-gray-500">Paid Leave</p>
-              <p className="text-lg font-semibold">{paySlip.paidLeaveDays}</p>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-3">
               <p className="text-xs text-gray-500">Absent</p>
               <p className="text-lg font-semibold text-red-600">{paySlip.absentDays}</p>
             </div>
             <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-xs text-gray-500">Unpaid Leave</p>
-              <p className="text-lg font-semibold text-red-600">{paySlip.unpaidLeaveDays}</p>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-3">
               <p className="text-xs text-gray-500">Late Days</p>
               <p className="text-lg font-semibold">{paySlip.lateDays}</p>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-xs text-gray-500">Paid Days (total)</p>
-              <p className="text-lg font-semibold">{paySlip.paidDays}</p>
             </div>
           </div>
 
@@ -159,21 +135,8 @@ export default async function PaySlipDetailPage({
                   <td className="py-3 px-4 text-gray-600">Earned Pay ({paySlip.paidDays} paid days)</td>
                   <td className="py-3 px-4 text-right font-medium">{formatCurrency(paySlip.grossPay)}</td>
                 </tr>
-                {(paySlip.absentDays + paySlip.unpaidLeaveDays > 0) && (
-                  <tr className="border-b">
-                    <td className="py-3 px-4 text-gray-600">
-                      Loss of Pay ({paySlip.absentDays + paySlip.unpaidLeaveDays} days)
-                    </td>
-                    <td className="py-3 px-4 text-right font-medium text-orange-600">
-                      -{formatCurrency(
-                        (paySlip.baseSalary / paySlip.workingDays) *
-                          (paySlip.absentDays + paySlip.unpaidLeaveDays)
-                      )}
-                    </td>
-                  </tr>
-                )}
                 <tr className="border-b">
-                  <td className="py-3 px-4 text-gray-600">Other Deductions (late penalty)</td>
+                  <td className="py-3 px-4 text-gray-600">Deductions</td>
                   <td className="py-3 px-4 text-right font-medium text-red-600">
                     -{formatCurrency(paySlip.deductions)}
                   </td>
@@ -196,24 +159,6 @@ export default async function PaySlipDetailPage({
                   <li key={note}>{note}</li>
                 ))}
               </ul>
-            </div>
-          )}
-
-          {breakdown.leaves.length > 0 && (
-            <div>
-              <h3 className="font-medium text-gray-900 mb-2">Approved Leaves</h3>
-              <div className="space-y-2">
-                {breakdown.leaves.map((leave, i) => (
-                  <div key={i} className="text-sm flex justify-between border-b pb-2">
-                    <span>
-                      {leave.type} · {formatDate(leave.startDate)} – {formatDate(leave.endDate)}
-                    </span>
-                    <span className={leave.paid ? "text-green-600" : "text-red-600"}>
-                      {leave.days} day(s) · {leave.paid ? "Paid" : "Unpaid"}
-                    </span>
-                  </div>
-                ))}
-              </div>
             </div>
           )}
 

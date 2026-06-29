@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
+import { canManagePayroll } from "@/lib/rbac"
 
 export async function GET(
   _request: NextRequest,
@@ -36,6 +37,14 @@ export async function GET(
       return NextResponse.json({ error: "Payslip not found" }, { status: 404 })
     }
 
+    const isAdmin = canManagePayroll(session.user.role)
+    const isOwner = paySlip.employeeId === session.user.id
+    const isPublished = paySlip.status === "FINALIZED" || paySlip.status === "PAID"
+
+    if (!isAdmin && (!isOwner || !isPublished)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+
     return NextResponse.json({
       ...paySlip,
       breakdown: JSON.parse(paySlip.breakdown),
@@ -54,6 +63,10 @@ export async function PUT(
     const session = await auth()
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    if (!canManagePayroll(session.user.role)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
     const { id } = await params

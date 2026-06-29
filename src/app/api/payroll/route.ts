@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
 import { generatePaySlipsForPeriod } from "@/lib/payroll"
+import { canManagePayroll } from "@/lib/rbac"
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,8 +15,19 @@ export async function GET(request: NextRequest) {
     const month = parseInt(searchParams.get("month") || String(new Date().getMonth() + 1), 10)
     const year = parseInt(searchParams.get("year") || String(new Date().getFullYear()), 10)
 
+    const isAdmin = canManagePayroll(session.user.role)
+
     const paySlips = await prisma.paySlip.findMany({
-      where: { periodMonth: month, periodYear: year },
+      where: {
+        periodMonth: month,
+        periodYear: year,
+        ...(isAdmin
+          ? {}
+          : {
+              employeeId: session.user.id,
+              status: { in: ["FINALIZED", "PAID"] },
+            }),
+      },
       include: {
         employee: {
           select: {
@@ -43,6 +55,10 @@ export async function POST(request: NextRequest) {
     const session = await auth()
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    if (!canManagePayroll(session.user.role)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
     const body = await request.json()

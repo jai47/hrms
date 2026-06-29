@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { Loader2, DollarSign, FileText, Download } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
+import { PushPayslipButton } from "./push-button"
 
 type PaySlipRow = {
   id: string
@@ -172,7 +173,7 @@ export function PayrollPanel({
                       <th className="py-3 px-2">Deductions</th>
                     <th className="py-3 px-2">Net Pay</th>
                     <th className="py-3 px-2">Status</th>
-                    <th className="py-3 px-2"></th>
+                    <th className="py-3 px-2">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -194,14 +195,25 @@ export function PayrollPanel({
                         {formatCurrency(slip.netPay)}
                       </td>
                       <td className="py-3 px-2">
-                        <Badge variant={slip.status === "PAID" ? "success" : "secondary"}>
-                          {slip.status}
+                        <Badge
+                          variant={
+                            slip.status === "PAID"
+                              ? "success"
+                              : slip.status === "FINALIZED"
+                                ? "info"
+                                : "secondary"
+                          }
+                        >
+                          {slip.status === "FINALIZED" ? "PUSHED" : slip.status}
                         </Badge>
                       </td>
                       <td className="py-3 px-2">
-                        <Link href={`/payroll/${slip.id}`} className="text-primary hover:underline text-sm">
-                          View
-                        </Link>
+                        <div className="flex items-center gap-3">
+                          <Link href={`/payroll/${slip.id}`} className="text-primary hover:underline text-sm">
+                            View
+                          </Link>
+                          <PushPayslipButton paySlipId={slip.id} status={slip.status} />
+                        </div>
                       </td>
                     </tr>
                   ))}

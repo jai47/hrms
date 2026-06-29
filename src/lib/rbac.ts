@@ -69,7 +69,7 @@ export const NAV_ITEMS: Omit<NavItem, "icon">[] = [
   { name: "My Tasks", href: "/tasks", roles: ["ADMIN", "HR_MANAGER", "MANAGER", "EMPLOYEE"] },
   { name: "Departments", href: "/departments", roles: ["ADMIN", "HR_MANAGER"] },
   { name: "Attendance", href: "/attendance/records", roles: ["ADMIN", "HR_MANAGER", "MANAGER"] },
-  { name: "Check In/Out", href: "/attendance/checkin", roles: ["ADMIN", "HR_MANAGER", "MANAGER", "EMPLOYEE"] },
+  { name: "Check In/Out", href: "/attendance/checkin", roles: ["ADMIN", "HR_MANAGER", "MANAGER"] },
   { name: "Time Reports", href: "/attendance/reports", roles: ["ADMIN", "HR_MANAGER", "MANAGER"] },
   { name: "Leaves", href: "/leaves", roles: ["ADMIN", "HR_MANAGER", "MANAGER", "EMPLOYEE"] },
   { name: "Work Logs", href: "/work-logs", roles: ["ADMIN", "HR_MANAGER", "MANAGER", "EMPLOYEE"] },
@@ -90,6 +90,7 @@ export const ROUTE_ACCESS: Array<{ prefix: string; roles: Role[] }> = [
   { prefix: "/departments", roles: ["ADMIN", "HR_MANAGER"] },
   { prefix: "/attendance/records", roles: ["ADMIN", "HR_MANAGER", "MANAGER"] },
   { prefix: "/attendance/reports", roles: ["ADMIN", "HR_MANAGER", "MANAGER"] },
+  { prefix: "/attendance/checkin", roles: ["ADMIN", "HR_MANAGER", "MANAGER"] },
   { prefix: "/performance", roles: ["ADMIN", "HR_MANAGER", "MANAGER"] },
   { prefix: "/work-logs", roles: ["ADMIN", "HR_MANAGER", "MANAGER", "EMPLOYEE"] },
 ]

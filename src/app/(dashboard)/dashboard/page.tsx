@@ -1,10 +1,21 @@
 import { prisma } from "@/lib/prisma"
+import { auth } from "@/lib/auth"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Users, Clock, Calendar, TrendingUp } from "lucide-react"
 import { formatDate } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
+import { EmployeeDashboard } from "./employee-dashboard"
 
-async function getStats() {
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+]
+
+const ON_TIME_STATUSES = ["PRESENT", "REMOTE"]
+const LATE_STATUSES = ["LATE"]
+const ABSENT_LEAVE_STATUSES = ["ABSENT", "ON_LEAVE", "HALF_DAY", "EARLY_LEAVE"]
+
+async function getAdminStats() {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const tomorrow = new Date(today)
@@ -61,8 +72,96 @@ async function getStats() {
   }
 }
 
+async function getEmployeeDashboardData(employeeId: string) {
+  const now = new Date()
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+
+  const [employee, attendances, todayAttendance, pendingLeaves, recentPaySlips] =
+    await Promise.all([
+      prisma.employee.findUnique({
+        where: { id: employeeId },
+        select: { firstName: true, lastName: true },
+      }),
+      prisma.attendance.findMany({
+        where: {
+          employeeId,
+          date: { gte: monthStart, lte: monthEnd },
+        },
+        orderBy: { date: "desc" },
+      }),
+      prisma.attendance.findFirst({
+        where: {
+          employeeId,
+          date: { gte: today, lt: tomorrow },
+        },
+      }),
+      prisma.leaveRequest.count({
+        where: { employeeId, status: "PENDING" },
+      }),
+      prisma.paySlip.findMany({
+        where: {
+          employeeId,
+          status: { in: ["FINALIZED", "PAID"] },
+        },
+        orderBy: [{ periodYear: "desc" }, { periodMonth: "desc" }],
+        take: 3,
+        select: { id: true, periodMonth: true, periodYear: true, netPay: true },
+      }),
+    ])
+
+  const onTime = attendances.filter((a) => ON_TIME_STATUSES.includes(a.status)).length
+  const late = attendances.filter((a) => LATE_STATUSES.includes(a.status)).length
+  const absentLeaves = attendances.filter((a) =>
+    ABSENT_LEAVE_STATUSES.includes(a.status)
+  ).length
+
+  return {
+    employeeName: employee ? `${employee.firstName} ${employee.lastName}` : "Employee",
+    monthLabel: `${MONTHS[now.getMonth()]} ${now.getFullYear()}`,
+    stats: {
+      onTime,
+      late,
+      absentLeaves,
+      todayStatus: todayAttendance?.status ?? null,
+    },
+    attendances: attendances.map((a) => ({
+      id: a.id,
+      date: a.date.toISOString(),
+      checkIn: a.checkIn?.toISOString() ?? null,
+      checkOut: a.checkOut?.toISOString() ?? null,
+      status: a.status,
+      totalHours: a.totalHours,
+    })),
+    pendingLeaves,
+    recentPaySlips,
+  }
+}
+
 export default async function DashboardPage() {
-  const stats = await getStats()
+  const session = await auth()
+  const role = session?.user?.role ?? "EMPLOYEE"
+
+  if (role === "EMPLOYEE" && session?.user?.id) {
+    const data = await getEmployeeDashboardData(session.user.id)
+    return (
+      <EmployeeDashboard
+        employeeName={data.employeeName}
+        monthLabel={data.monthLabel}
+        stats={data.stats}
+        attendances={data.attendances}
+        pendingLeaves={data.pendingLeaves}
+        recentPaySlips={data.recentPaySlips}
+      />
+    )
+  }
+
+  const stats = await getAdminStats()
 
   return (
     <div className="space-y-6">
@@ -71,7 +170,6 @@ export default async function DashboardPage() {
         <p className="text-gray-500 mt-1">Overview of your HR metrics</p>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -118,7 +216,6 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      {/* Recent Activity & Upcoming Birthdays */}
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
@@ -136,8 +233,12 @@ export default async function DashboardPage() {
                         {attendance.employee.firstName[0]}{attendance.employee.lastName[0]}
                       </div>
                       <div>
-                        <p className="text-sm font-medium">{attendance.employee.firstName} {attendance.employee.lastName}</p>
-                        <p className="text-xs text-muted-foreground">{attendance.employee.employeeId}</p>
+                        <p className="text-sm font-medium">
+                          {attendance.employee.firstName} {attendance.employee.lastName}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {attendance.employee.employeeId}
+                        </p>
                       </div>
                     </div>
                     <div className="text-right">
@@ -171,7 +272,9 @@ export default async function DashboardPage() {
                         {emp.firstName[0]}{emp.lastName[0]}
                       </div>
                       <div>
-                        <p className="text-sm font-medium">{emp.firstName} {emp.lastName}</p>
+                        <p className="text-sm font-medium">
+                          {emp.firstName} {emp.lastName}
+                        </p>
                         <p className="text-xs text-muted-foreground">{emp.employeeId}</p>
                       </div>
                     </div>
