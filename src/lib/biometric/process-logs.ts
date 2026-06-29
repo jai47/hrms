@@ -42,6 +42,18 @@ async function getWorkStartTime(): Promise<{ hour: number; minute: number }> {
   return { hour: 9, minute: 0 }
 }
 
+function attendanceSourceForDevice(device: BiometricDevice): "BIOMETRIC" | "GOOGLE_FORM" {
+  return device.deviceType === "GOOGLE_FORM" ? "GOOGLE_FORM" : "BIOMETRIC"
+}
+
+async function findEmployeeForLog(biometricId: string) {
+  return prisma.employee.findFirst({
+    where: {
+      OR: [{ biometricId }, { employeeId: biometricId }],
+    },
+  })
+}
+
 function resolveEventType(
   eventType: BiometricLogEntry["eventType"],
   existing: Attendance | null
@@ -142,9 +154,7 @@ async function processSingleLog(
     return "skipped"
   }
 
-  const employee = await prisma.employee.findUnique({
-    where: { biometricId },
-  })
+  const employee = await findEmployeeForLog(biometricId)
 
   if (existingLog) {
     if (employee) {
@@ -207,6 +217,8 @@ async function applyAttendanceFromLog(
   const resolvedType = resolveEventType(log.eventType, existingAttendance)
   if (!resolvedType) return
 
+  const source = attendanceSourceForDevice(device)
+
   if (resolvedType === "CHECK_IN") {
     if (existingAttendance?.checkIn) return
 
@@ -222,7 +234,7 @@ async function applyAttendanceFromLog(
       update: {
         checkIn: logTime,
         status,
-        source: "BIOMETRIC",
+        source,
         deviceId: device.deviceId,
         location: device.location ?? undefined,
       },
@@ -231,7 +243,7 @@ async function applyAttendanceFromLog(
         date: logDate,
         checkIn: logTime,
         status,
-        source: "BIOMETRIC",
+        source,
         deviceId: device.deviceId,
         location: device.location ?? undefined,
       },
@@ -240,7 +252,7 @@ async function applyAttendanceFromLog(
     await notifyEmployee(
       employeeId,
       "Check-in Recorded",
-      `Biometric check-in recorded at ${logTime.toLocaleTimeString()}`
+      `${source === "GOOGLE_FORM" ? "Google Form" : "Biometric"} check-in recorded at ${logTime.toLocaleTimeString()}`
     )
     return
   }
@@ -257,7 +269,7 @@ async function applyAttendanceFromLog(
       where: { id: existingAttendance.id },
       data: {
         ...checkoutData,
-        source: "BIOMETRIC",
+        source,
         deviceId: device.deviceId,
         location: device.location ?? undefined,
       },
@@ -269,7 +281,7 @@ async function applyAttendanceFromLog(
         date: logDate,
         checkOut: logTime,
         status: "PRESENT",
-        source: "BIOMETRIC",
+        source,
         deviceId: device.deviceId,
         location: device.location ?? undefined,
       },
@@ -279,7 +291,7 @@ async function applyAttendanceFromLog(
   await notifyEmployee(
     employeeId,
     "Check-out Recorded",
-    `Biometric check-out recorded at ${logTime.toLocaleTimeString()}`
+    `${source === "GOOGLE_FORM" ? "Google Form" : "Biometric"} check-out recorded at ${logTime.toLocaleTimeString()}`
   )
 }
 

@@ -208,16 +208,19 @@ model Notification {
 }
 
 model BiometricDevice {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  deviceId    String   @unique
-  name        String
-  location    String?
-  ipAddress   String?
-  port        Int?
-  isActive    Boolean  @default(true)
-  lastSync    DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String              @id @default(auto()) @map("_id") @db.ObjectId
+  deviceId      String              @unique
+  name          String
+  deviceType    BiometricDeviceType @default(ZK_DEVICE)
+  location      String?
+  ipAddress     String?
+  port          Int?
+  googleFormUrl String?
+  webhookSecret String?
+  isActive      Boolean             @default(true)
+  lastSync      DateTime?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
 
   logs        BiometricLog[]
 
@@ -349,6 +352,11 @@ enum NotificationType {
   SYSTEM
 }
 
+enum BiometricDeviceType {
+  ZK_DEVICE
+  GOOGLE_FORM
+}
+
 enum BiometricEventType {
   CHECK_IN
   CHECK_OUT
@@ -360,6 +368,7 @@ enum BiometricEventType {
 enum AttendanceSource {
   MANUAL
   BIOMETRIC
+  GOOGLE_FORM
   FACE_RECOGNITION
   MOBILE_APP
   WEB_PORTAL

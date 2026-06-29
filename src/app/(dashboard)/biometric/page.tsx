@@ -8,6 +8,7 @@ import Link from "next/link"
 import { Plus, Search, Wifi, WifiOff, RefreshCw, Loader2, Edit, Trash2 } from "lucide-react"
 import { formatDateTime } from "@/lib/utils"
 import { SyncDeviceButton, SyncAllDevicesButton } from "./client-components"
+import { FileSpreadsheet } from "lucide-react"
 
 async function getDevices() {
   return prisma.biometricDevice.findMany({
@@ -28,11 +29,17 @@ export default async function BiometricDevicesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Biometric Devices</h1>
-          <p className="text-gray-500">Manage fingerprint attendance devices</p>
+          <h1 className="text-3xl font-bold text-gray-900">Attendance Devices</h1>
+          <p className="text-gray-500">Fingerprint scanners and Google Form check-in integrations</p>
         </div>
-        <div className="flex gap-2">
-          {devices.length > 0 && <SyncAllDevicesButton />}
+        <div className="flex gap-2 flex-wrap">
+          {devices.some((d) => d.deviceType === "ZK_DEVICE") && <SyncAllDevicesButton />}
+          <Link href="/biometric/new/google-form">
+            <Button variant="outline">
+              <FileSpreadsheet className="h-4 w-4 mr-2" />
+              Add Google Form
+            </Button>
+          </Link>
           <Link href="/biometric/new">
             <Button>
               <Plus className="h-4 w-4 mr-2" />
@@ -79,6 +86,12 @@ export default async function BiometricDevicesPage() {
                     </Badge>
                   </div>
 
+                  <div className="mb-3">
+                    <Badge variant="outline" className="text-xs">
+                      {device.deviceType === "GOOGLE_FORM" ? "Google Form" : "Fingerprint"}
+                    </Badge>
+                  </div>
+
                   <div className="space-y-2 text-sm text-gray-600 mb-4">
                     {device.location && (
                       <div className="flex items-center gap-1">
@@ -107,10 +120,12 @@ export default async function BiometricDevicesPage() {
                   </div>
 
                   <div className="flex gap-2">
-                    <SyncDeviceButton deviceId={device.deviceId} className="flex-1" />
+                    {device.deviceType === "ZK_DEVICE" && (
+                      <SyncDeviceButton deviceId={device.deviceId} className="flex-1" />
+                    )}
                     <Link
                       href={`/biometric/${device.id}`}
-                      className="flex-1"
+                      className={device.deviceType === "ZK_DEVICE" ? "flex-1" : "w-full"}
                     >
                       <Button variant="outline" size="sm">
                         <Edit className="h-4 w-4 mr-1" />

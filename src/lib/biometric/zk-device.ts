@@ -299,13 +299,16 @@ export async function pullAndProcessDeviceLogs(deviceId: string): Promise<{
     }
   }
 
-  if (!registeredDevice.ipAddress) {
+  if (!registeredDevice.ipAddress || registeredDevice.deviceType === "GOOGLE_FORM") {
     return {
       success: false,
       logsFetched: 0,
       processed: 0,
       skipped: 0,
-      error: "Device IP address is not configured",
+      error:
+        registeredDevice.deviceType === "GOOGLE_FORM"
+          ? "Google Form integrations receive attendance via webhook, not sync"
+          : "Device IP address not configured",
     }
   }
 
@@ -381,7 +384,7 @@ export async function syncAllDevices(): Promise<{
   const { prisma } = await import("@/lib/prisma")
 
   const devices = await prisma.biometricDevice.findMany({
-    where: { isActive: true },
+    where: { isActive: true, deviceType: "ZK_DEVICE" },
   })
 
   const results = await Promise.all(

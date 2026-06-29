@@ -9,15 +9,14 @@ import { Label } from "@/components/ui/label"
 import { Loader2, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 
-export default function NewBiometricDevicePage() {
+export default function NewGoogleFormIntegrationPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
-    deviceId: "",
+    deviceId: `GF-${Date.now().toString(36).toUpperCase().slice(-6)}`,
     name: "",
     location: "",
-    ipAddress: "",
-    port: "4370",
+    googleFormUrl: "",
     isActive: true,
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -28,16 +27,13 @@ export default function NewBiometricDevicePage() {
       ...prev,
       [name]: type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
     }))
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }))
-    }
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }))
   }
 
   const validate = () => {
     const newErrors: Record<string, string> = {}
-    if (!formData.deviceId.trim()) newErrors.deviceId = "Device ID is required"
+    if (!formData.deviceId.trim()) newErrors.deviceId = "Integration ID is required"
     if (!formData.name.trim()) newErrors.name = "Name is required"
-    if (!formData.ipAddress.trim()) newErrors.ipAddress = "IP Address is required"
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -51,18 +47,22 @@ export default function NewBiometricDevicePage() {
       const response = await fetch("/api/biometric/devices", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...formData, deviceType: "ZK_DEVICE" }),
+        body: JSON.stringify({
+          ...formData,
+          deviceType: "GOOGLE_FORM",
+        }),
       })
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.message || "Failed to create device")
+        throw new Error(error.error || "Failed to create integration")
       }
 
-      router.push("/biometric")
+      const device = await response.json()
+      router.push(`/biometric/${device.id}`)
       router.refresh()
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Failed to create device")
+      alert(error instanceof Error ? error.message : "Failed to create integration")
     } finally {
       setIsLoading(false)
     }
@@ -75,40 +75,37 @@ export default function NewBiometricDevicePage() {
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Add Biometric Device</h1>
-          <p className="text-gray-500">Register a new fingerprint attendance device</p>
+          <h1 className="text-3xl font-bold text-gray-900">Add Google Form Integration</h1>
+          <p className="text-gray-500">Record attendance when employees submit a Google Form</p>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Device Configuration</CardTitle>
+          <CardTitle>Integration Settings</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
             <div className="space-y-2">
-              <Label htmlFor="deviceId">Device ID *</Label>
+              <Label htmlFor="deviceId">Integration ID *</Label>
               <Input
                 id="deviceId"
                 name="deviceId"
-                placeholder="e.g., ZK-001, FP-002"
+                placeholder="e.g., GF-CHECKIN"
                 value={formData.deviceId}
                 onChange={handleChange}
-                error={errors.deviceId}
               />
               {errors.deviceId && <p className="text-sm text-red-500">{errors.deviceId}</p>}
-              <p className="text-xs text-gray-500">Unique identifier from the device (usually shown on device screen)</p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="name">Device Name *</Label>
+              <Label htmlFor="name">Name *</Label>
               <Input
                 id="name"
                 name="name"
-                placeholder="e.g., Main Entrance Fingerprint Scanner"
+                placeholder="e.g., Office Check-in Form"
                 value={formData.name}
                 onChange={handleChange}
-                error={errors.name}
               />
               {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
             </div>
@@ -118,38 +115,23 @@ export default function NewBiometricDevicePage() {
               <Input
                 id="location"
                 name="location"
-                placeholder="e.g., Building A - Main Entrance"
+                placeholder="e.g., Remote / HQ Entrance"
                 value={formData.location}
                 onChange={handleChange}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="ipAddress">IP Address *</Label>
+              <Label htmlFor="googleFormUrl">Google Form URL (optional)</Label>
               <Input
-                id="ipAddress"
-                name="ipAddress"
-                type="text"
-                placeholder="192.168.1.100"
-                value={formData.ipAddress}
-                onChange={handleChange}
-                error={errors.ipAddress}
-              />
-              {errors.ipAddress && <p className="text-sm text-red-500">{errors.ipAddress}</p>}
-              <p className="text-xs text-gray-500">IP address of the device on your network</p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="port">Port</Label>
-              <Input
-                id="port"
-                name="port"
-                type="number"
-                placeholder="4370"
-                value={formData.port}
+                id="googleFormUrl"
+                name="googleFormUrl"
+                type="url"
+                placeholder="https://docs.google.com/forms/d/..."
+                value={formData.googleFormUrl}
                 onChange={handleChange}
               />
-              <p className="text-xs text-gray-500">Default is 4370 for ZKTeco devices</p>
+              <p className="text-xs text-gray-500">For your reference only — stored in HRMS</p>
             </div>
 
             <div className="flex items-center gap-2">
@@ -162,15 +144,13 @@ export default function NewBiometricDevicePage() {
                 className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
               />
               <Label htmlFor="isActive" className="cursor-pointer">
-                Device is active and should sync logs
+                Integration is active
               </Label>
             </div>
 
             <div className="flex justify-end gap-4 pt-4 border-t">
               <Link href="/biometric">
-                <Button type="button" variant="outline">
-                  Cancel
-                </Button>
+                <Button type="button" variant="outline">Cancel</Button>
               </Link>
               <Button type="submit" disabled={isLoading}>
                 {isLoading ? (
@@ -179,7 +159,7 @@ export default function NewBiometricDevicePage() {
                     Creating...
                   </span>
                 ) : (
-                  "Create Device"
+                  "Create Integration"
                 )}
               </Button>
             </div>
@@ -187,29 +167,18 @@ export default function NewBiometricDevicePage() {
         </CardContent>
       </Card>
 
-      {/* Instructions Card */}
-      <Card className="border-blue-200 bg-blue-50">
+      <Card className="border-green-200 bg-green-50">
         <CardHeader>
-          <CardTitle className="text-blue-900">Setup Instructions</CardTitle>
+          <CardTitle className="text-green-900">How it works</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3 text-sm text-blue-800">
+        <CardContent className="space-y-3 text-sm text-green-800">
           <ol className="list-decimal list-inside space-y-2">
-            <li>Connect the biometric device to your network via Ethernet or WiFi</li>
-            <li>Find the device IP address (usually shown on device screen or via network scan)</li>
-            <li>Get the Device ID from the device menu (often under System Info or Comm settings)</li>
-            <li>Ensure port 4370 (default) is open on your firewall</li>
-            <li>Enter the details above and click "Create Device"</li>
-            <li>Use the "Sync Logs" button on the device list to pull attendance data</li>
+            <li>Create a Google Form with one short-answer field named <strong>Employee ID</strong> (e.g. EMP-015)</li>
+            <li>Link responses to a Google Sheet (Responses → Link to Sheets)</li>
+            <li>Create this integration — you will get a webhook URL and Apps Script to paste</li>
+            <li>First form submission of the day = check-in; second = check-out</li>
+            <li>Submission timestamp from Google Forms is used as the punch time</li>
           </ol>
-          <div className="pt-3 border-t border-blue-200">
-            <p className="font-medium">Supported Devices:</p>
-            <ul className="list-disc list-inside space-y-1 mt-1">
-              <li>ZKTeco / ZKSoftware (most models with TCP/IP)</li>
-              <li>eSSL / eTimeTrack</li>
-              <li>Realand / Anviz</li>
-              <li>Any device using ZK protocol on port 4370</li>
-            </ul>
-          </div>
         </CardContent>
       </Card>
     </div>

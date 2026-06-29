@@ -7,6 +7,12 @@ import Link from "next/link"
 import { formatDateTime, getLeaveStatusColor } from "@/lib/utils"
 import { Wifi, WifiOff, RefreshCw, Loader2, Edit, Trash2, Clock } from "lucide-react"
 import { ToggleDeviceButton, SyncDeviceButton } from "../client-components"
+import { GoogleFormSetupCard } from "../google-form-setup"
+import {
+  buildGoogleAppsScript,
+  getGoogleFormWebhookUrl,
+} from "@/lib/biometric/google-form"
+import { FileSpreadsheet } from "lucide-react"
 
 async function getDevice(id: string) {
   return prisma.biometricDevice.findUnique({
@@ -40,6 +46,17 @@ export default async function BiometricDeviceDetailPage({
     notFound()
   }
 
+  const isGoogleForm = device.deviceType === "GOOGLE_FORM"
+  const webhookUrl = getGoogleFormWebhookUrl()
+  const appsScript =
+    isGoogleForm && device.webhookSecret
+      ? buildGoogleAppsScript({
+          webhookUrl,
+          deviceId: device.deviceId,
+          webhookSecret: device.webhookSecret,
+        })
+      : ""
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -62,25 +79,39 @@ export default async function BiometricDeviceDetailPage({
         <Card className="lg:col-span-1">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Wifi className="h-5 w-5" />
-              Device Status
+              {isGoogleForm ? (
+                <FileSpreadsheet className="h-5 w-5" />
+              ) : (
+                <Wifi className="h-5 w-5" />
+              )}
+              {isGoogleForm ? "Integration Status" : "Device Status"}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-gray-500">Type</span>
+              <Badge variant="outline">
+                {isGoogleForm ? "Google Form" : "Fingerprint"}
+              </Badge>
+            </div>
             <div className="flex items-center justify-between">
               <span className="text-gray-500">Status</span>
               <Badge variant={device.isActive ? "success" : "secondary"}>
                 {device.isActive ? "Active" : "Inactive"}
               </Badge>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-500">IP Address</span>
-              <span className="font-mono text-sm">{device.ipAddress || "Not set"}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-500">Port</span>
-              <span className="font-mono text-sm">{device.port}</span>
-            </div>
+            {!isGoogleForm && (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-500">IP Address</span>
+                  <span className="font-mono text-sm">{device.ipAddress || "Not set"}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-500">Port</span>
+                  <span className="font-mono text-sm">{device.port}</span>
+                </div>
+              </>
+            )}
             <div className="flex items-center justify-between">
               <span className="text-gray-500">Total Logs</span>
               <span className="font-medium">{device._count.logs}</span>
@@ -98,13 +129,33 @@ export default async function BiometricDeviceDetailPage({
 
             <div className="pt-4 border-t space-y-2">
               <ToggleDeviceButton deviceId={device.id} isActive={device.isActive} className="w-full" />
-              <SyncDeviceButton deviceId={device.deviceId} className="w-full" />
+              {!isGoogleForm && (
+                <SyncDeviceButton deviceId={device.deviceId} className="w-full" />
+              )}
             </div>
           </CardContent>
         </Card>
 
+        {isGoogleForm && device.webhookSecret && (
+          <Card className="lg:col-span-2 border-green-200">
+            <CardHeader>
+              <CardTitle className="text-green-900">Google Form Setup</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <GoogleFormSetupCard
+                deviceDbId={device.id}
+                deviceId={device.deviceId}
+                webhookUrl={webhookUrl}
+                webhookSecret={device.webhookSecret}
+                appsScript={appsScript}
+                googleFormUrl={device.googleFormUrl}
+              />
+            </CardContent>
+          </Card>
+        )}
+
         {/* Recent Logs */}
-        <Card className="lg:col-span-2">
+        <Card className={isGoogleForm ? "lg:col-span-3" : "lg:col-span-2"}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Clock className="h-5 w-5" />
@@ -113,7 +164,11 @@ export default async function BiometricDeviceDetailPage({
           </CardHeader>
           <CardContent>
             {device.logs.length === 0 ? (
-              <p className="text-center py-8 text-gray-500">No logs recorded yet. Click "Sync Logs Now" to pull data from the device.</p>
+              <p className="text-center py-8 text-gray-500">
+                {isGoogleForm
+                  ? "No submissions yet. Set up the Apps Script trigger and submit the form to record attendance."
+                  : 'No logs recorded yet. Click "Sync Logs Now" to pull data from the device.'}
+              </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -121,7 +176,7 @@ export default async function BiometricDeviceDetailPage({
                     <tr className="border-b border-gray-200">
                       <th className="text-left py-2 px-4 text-sm font-medium text-gray-500">Time</th>
                       <th className="text-left py-2 px-4 text-sm font-medium text-gray-500">Employee</th>
-                      <th className="text-left py-2 px-4 text-sm font-medium text-gray-500">Biometric ID</th>
+                      <th className="text-left py-2 px-4 text-sm font-medium text-gray-500">Employee ID</th>
                       <th className="text-left py-2 px-4 text-sm font-medium text-gray-500">Event</th>
                       <th className="text-left py-2 px-4 text-sm font-medium text-gray-500">Processed</th>
                     </tr>

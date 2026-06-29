@@ -59,6 +59,7 @@ export async function PUT(
         ipAddress: body.ipAddress,
         port: body.port,
         isActive: body.isActive,
+        googleFormUrl: body.googleFormUrl,
       },
     })
 

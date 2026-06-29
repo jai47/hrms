@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
+import { generateWebhookSecret } from "@/lib/biometric/google-form"
 
 export async function GET(request: NextRequest) {
   try {
@@ -36,11 +37,29 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { deviceId, name, location, ipAddress, port, isActive } = body
+    const {
+      deviceId,
+      name,
+      location,
+      ipAddress,
+      port,
+      isActive,
+      deviceType,
+      googleFormUrl,
+    } = body
+
+    const type = deviceType === "GOOGLE_FORM" ? "GOOGLE_FORM" : "ZK_DEVICE"
 
     if (!deviceId || !name) {
       return NextResponse.json(
         { error: "Device ID and name are required" },
+        { status: 400 }
+      )
+    }
+
+    if (type === "ZK_DEVICE" && !ipAddress) {
+      return NextResponse.json(
+        { error: "IP address is required for fingerprint devices" },
         { status: 400 }
       )
     }
@@ -60,9 +79,12 @@ export async function POST(request: NextRequest) {
       data: {
         deviceId,
         name,
+        deviceType: type,
         location,
-        ipAddress,
-        port: port || 4370,
+        ipAddress: type === "ZK_DEVICE" ? ipAddress : null,
+        port: type === "ZK_DEVICE" ? port || 4370 : null,
+        googleFormUrl: type === "GOOGLE_FORM" ? googleFormUrl || null : null,
+        webhookSecret: type === "GOOGLE_FORM" ? generateWebhookSecret() : null,
         isActive: isActive !== false,
       },
     })
