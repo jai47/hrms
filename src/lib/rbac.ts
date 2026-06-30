@@ -54,6 +54,22 @@ export function canViewAllWorkLogs(role: string): boolean {
   return hasAnyRole(role, ["ADMIN", "HR_MANAGER", "MANAGER"])
 }
 
+export function canViewAllMeetings(role: string): boolean {
+  return hasAnyRole(role, ["ADMIN", "HR_MANAGER", "MANAGER"])
+}
+
+export function canApproveItems(role: string): boolean {
+  return hasAnyRole(role, ["ADMIN", "HR_MANAGER", "MANAGER"])
+}
+
+export function canManageShifts(role: string): boolean {
+  return hasAnyRole(role, ["ADMIN", "HR_MANAGER"])
+}
+
+export function canManageAnnouncements(role: string): boolean {
+  return hasAnyRole(role, ["ADMIN", "HR_MANAGER"])
+}
+
 export type NavItem = {
   name: string
   href: string
@@ -72,6 +88,11 @@ export const NAV_ITEMS: Omit<NavItem, "icon">[] = [
   { name: "Check In/Out", href: "/attendance/checkin", roles: ["ADMIN", "HR_MANAGER", "MANAGER"] },
   { name: "Time Reports", href: "/attendance/reports", roles: ["ADMIN", "HR_MANAGER", "MANAGER"] },
   { name: "Leaves", href: "/leaves", roles: ["ADMIN", "HR_MANAGER", "MANAGER", "EMPLOYEE"] },
+  { name: "Meetings", href: "/meetings", roles: ["ADMIN", "HR_MANAGER", "MANAGER", "EMPLOYEE"] },
+  { name: "My Calendar", href: "/attendance/my-calendar", roles: ["ADMIN", "HR_MANAGER", "MANAGER", "EMPLOYEE"] },
+  { name: "Approvals", href: "/approvals", roles: ["ADMIN", "HR_MANAGER", "MANAGER"] },
+  { name: "Announcements", href: "/announcements", roles: ["ADMIN", "HR_MANAGER", "MANAGER", "EMPLOYEE"] },
+  { name: "Shifts", href: "/shifts", roles: ["ADMIN", "HR_MANAGER"] },
   { name: "Work Logs", href: "/work-logs", roles: ["ADMIN", "HR_MANAGER", "MANAGER", "EMPLOYEE"] },
   { name: "Payroll", href: "/payroll", roles: ["ADMIN", "HR_MANAGER"] },
   { name: "Performance", href: "/performance", roles: ["ADMIN", "HR_MANAGER", "MANAGER"] },
@@ -93,6 +114,11 @@ export const ROUTE_ACCESS: Array<{ prefix: string; roles: Role[] }> = [
   { prefix: "/attendance/reports", roles: ["ADMIN", "HR_MANAGER", "MANAGER"] },
   { prefix: "/attendance/checkin", roles: ["ADMIN", "HR_MANAGER", "MANAGER"] },
   { prefix: "/performance", roles: ["ADMIN", "HR_MANAGER", "MANAGER"] },
+  { prefix: "/approvals", roles: ["ADMIN", "HR_MANAGER", "MANAGER"] },
+  { prefix: "/shifts", roles: ["ADMIN", "HR_MANAGER"] },
+  { prefix: "/attendance/my-calendar", roles: ["ADMIN", "HR_MANAGER", "MANAGER", "EMPLOYEE"] },
+  { prefix: "/meetings", roles: ["ADMIN", "HR_MANAGER", "MANAGER", "EMPLOYEE"] },
+  { prefix: "/announcements", roles: ["ADMIN", "HR_MANAGER", "MANAGER", "EMPLOYEE"] },
   { prefix: "/work-logs", roles: ["ADMIN", "HR_MANAGER", "MANAGER", "EMPLOYEE"] },
   { prefix: "/account", roles: ["ADMIN", "HR_MANAGER", "MANAGER", "EMPLOYEE"] },
 ]

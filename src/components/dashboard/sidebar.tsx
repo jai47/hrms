@@ -25,6 +25,11 @@ import {
   DollarSign,
   UserCircle,
   X,
+  Video,
+  CalendarDays,
+  CheckCircle,
+  Megaphone,
+  Timer,
   type LucideIcon,
 } from "lucide-react"
 
@@ -38,6 +43,11 @@ const ICONS: Record<string, LucideIcon> = {
   "Check In/Out": Clock,
   "Time Reports": BarChart3,
   Leaves: Calendar,
+  Meetings: Video,
+  "My Calendar": CalendarDays,
+  Approvals: CheckCircle,
+  Announcements: Megaphone,
+  Shifts: Timer,
   "Work Logs": NotebookPen,
   Payroll: DollarSign,
   Performance: ClipboardList,

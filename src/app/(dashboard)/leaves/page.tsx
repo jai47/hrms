@@ -7,7 +7,9 @@ import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { Plus } from "lucide-react"
 import { formatDate, getLeaveStatusColor } from "@/lib/utils"
-import { LeaveActions } from "./client-components"
+import { LeaveActions, CancelLeaveButton } from "./client-components"
+import { LeaveBalanceCard } from "@/components/leaves/leave-balance-card"
+import { getLeaveBalances } from "@/lib/leave-balance"
 
 async function getLeaveRequests(
   searchParams: {
@@ -85,6 +87,9 @@ export default async function LeavesPage({
     employeeFilter
   )
 
+  const balance =
+    !viewAll && session?.user?.id ? await getLeaveBalances(session.user.id) : null
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -101,6 +106,8 @@ export default async function LeavesPage({
           </Button>
         </Link>
       </div>
+
+      {balance && <LeaveBalanceCard balance={balance} />}
 
       <Card>
         <CardHeader>
@@ -205,6 +212,7 @@ export default async function LeavesPage({
                         >
                           View
                         </Link>
+                        <CancelLeaveButton requestId={request.id} status={request.status} />
                       </td>
                     </tr>
                   ))

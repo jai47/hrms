@@ -1,16 +1,22 @@
 import { prisma } from "@/lib/prisma"
+import { auth } from "@/lib/auth"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatDate, getLeaveStatusColor } from "@/lib/utils"
+import { CancelLeaveButton } from "../client-components"
+import { LeaveBalanceCard } from "@/components/leaves/leave-balance-card"
+import { getLeaveBalances } from "@/lib/leave-balance"
+import { canViewAllLeaves } from "@/lib/rbac"
 
 export default async function LeaveDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>
 }) {
+  const session = await auth()
   const { id } = await params
   const request = await prisma.leaveRequest.findUnique({
     where: { id },
@@ -18,6 +24,13 @@ export default async function LeaveDetailPage({
   })
 
   if (!request) notFound()
+
+  const role = session?.user?.role ?? "EMPLOYEE"
+  const canView =
+    canViewAllLeaves(role) || request.employeeId === session?.user?.id
+  if (!canView) notFound()
+
+  const balance = await getLeaveBalances(request.employeeId)
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -32,6 +45,9 @@ export default async function LeaveDetailPage({
           </p>
         </div>
       </div>
+
+      <LeaveBalanceCard balance={balance} />
+
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
@@ -46,6 +62,9 @@ export default async function LeaveDetailPage({
           {request.rejectedReason && (
             <p className="text-red-600"><span className="font-medium">Rejection reason:</span> {request.rejectedReason}</p>
           )}
+          <div className="pt-2">
+            <CancelLeaveButton requestId={request.id} status={request.status} />
+          </div>
         </CardContent>
       </Card>
     </div>

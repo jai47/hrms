@@ -1,10 +1,13 @@
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
 import { canManageEmployees } from "@/lib/rbac"
+import { canUploadDocuments, isDocumentStorageEnabled } from "@/lib/app-config"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { FileText, DollarSign } from "lucide-react"
+import { FileText, DollarSign, CloudOff } from "lucide-react"
 import { formatDate, formatCurrency } from "@/lib/utils"
+import { documentViewUrl, documentFileUrl } from "@/lib/documents"
+import { DocumentUploadForm } from "@/components/documents/document-upload-form"
 import Link from "next/link"
 
 const MONTHS = [
@@ -95,6 +98,18 @@ export default async function DocumentsPage({
 
   const showFiles = tab === "all" || tab === "files"
   const showPayslipSection = showPayslips && (tab === "all" || tab === "payslips")
+  const uploadEnabled = canUploadDocuments()
+  const storageEnabled = isDocumentStorageEnabled()
+
+  const employees =
+    viewAll && uploadEnabled
+      ? await prisma.employee.findMany({
+          where: { employmentStatus: "ACTIVE" },
+          select: { id: true, firstName: true, lastName: true, employeeId: true },
+          orderBy: { firstName: "asc" },
+          take: 200,
+        })
+      : []
 
   return (
     <div className="space-y-6">
@@ -127,6 +142,23 @@ export default async function DocumentsPage({
             </Link>
           ))}
         </div>
+      )}
+
+      {showFiles && uploadEnabled && (
+        <DocumentUploadForm employees={employees} />
+      )}
+
+      {showFiles && !uploadEnabled && (
+        <Card>
+          <CardContent className="py-6 flex items-center gap-3 text-gray-500">
+            <CloudOff className="h-5 w-5 shrink-0" />
+            <p className="text-sm">
+              {storageEnabled
+                ? "Document uploads are disabled. An administrator can enable S3 storage in Settings → Integrations."
+                : "Document uploads are unavailable. Configure S3 storage in Settings → Integrations (admin only)."}
+            </p>
+          </CardContent>
+        </Card>
       )}
 
       {showPayslipSection && (
@@ -281,14 +313,18 @@ export default async function DocumentsPage({
                         <td className="py-3 px-4 text-sm text-gray-500">
                           {doc.expiryDate ? formatDate(doc.expiryDate) : "—"}
                         </td>
-                        <td className="py-3 px-4 text-right">
-                          <a
-                            href={doc.fileUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                        <td className="py-3 px-4 text-right space-x-3">
+                          <Link
+                            href={documentViewUrl(doc.id)}
                             className="text-sm text-primary hover:underline"
                           >
-                            Open
+                            View
+                          </Link>
+                          <a
+                            href={`${documentFileUrl(doc.id)}?download=1`}
+                            className="text-sm text-gray-600 hover:underline"
+                          >
+                            Download
                           </a>
                         </td>
                       </tr>

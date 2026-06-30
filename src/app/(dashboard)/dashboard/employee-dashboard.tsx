@@ -7,6 +7,7 @@ import { formatDate, formatTime, formatCurrency, getAttendanceStatusColor } from
 import { Clock, CheckCircle2, AlertCircle, CalendarOff } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { UpcomingMeetingsCard, type UpcomingMeetingItem } from "@/components/meetings/upcoming-meetings-card"
 
 export type AttendanceRecord = {
   id: string
@@ -69,6 +70,7 @@ export function EmployeeDashboard({
   attendances,
   pendingLeaves,
   recentPaySlips,
+  upcomingMeetings,
 }: {
   employeeName: string
   monthLabel: string
@@ -81,6 +83,7 @@ export function EmployeeDashboard({
   attendances: AttendanceRecord[]
   pendingLeaves: number
   recentPaySlips: { id: string; periodMonth: number; periodYear: number; netPay: number }[]
+  upcomingMeetings: UpcomingMeetingItem[]
 }) {
   const MONTHS = [
     "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -148,7 +151,12 @@ export function EmployeeDashboard({
 
       <Card>
         <CardHeader>
-          <CardTitle>My Attendance</CardTitle>
+          <div className="flex flex-row items-center justify-between">
+            <CardTitle>My Attendance</CardTitle>
+            <Link href="/attendance/my-calendar">
+              <Button size="sm" variant="outline">Calendar</Button>
+            </Link>
+          </div>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="on-time">
@@ -224,6 +232,8 @@ export function EmployeeDashboard({
           </CardContent>
         </Card>
       </div>
+
+      <UpcomingMeetingsCard meetings={upcomingMeetings} />
     </div>
   )
 }

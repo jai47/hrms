@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { SETTING_KEYS } from "@/lib/settings-keys"
 import { getSetting } from "@/lib/settings"
+import { getEmployeeWorkTimes } from "@/lib/shifts"
 
 const REMINDER_MINUTES_BEFORE = 30
 
@@ -43,7 +44,7 @@ export function isWithinReminderWindow(
 
 export async function getWorkLogStatusForEmployee(employeeId: string) {
   const today = getTodayDate()
-  const workEndTime = await getWorkEndTime()
+  const { endTime: workEndTime } = await getEmployeeWorkTimes(employeeId)
   const now = new Date()
 
   const [existingLog, attendance] = await Promise.all([
@@ -78,12 +79,7 @@ export async function sendWorkLogReminders(): Promise<{
   skipped: number
 }> {
   const today = getTodayDate()
-  const workEndTime = await getWorkEndTime()
   const now = new Date()
-
-  if (!isWithinReminderWindow(now, workEndTime)) {
-    return { notified: 0, skipped: 0 }
-  }
 
   const activeEmployees = await prisma.employee.findMany({
     where: { employmentStatus: "ACTIVE" },
@@ -94,6 +90,12 @@ export async function sendWorkLogReminders(): Promise<{
   let skipped = 0
 
   for (const employee of activeEmployees) {
+    const { endTime: workEndTime } = await getEmployeeWorkTimes(employee.id)
+    if (!isWithinReminderWindow(now, workEndTime)) {
+      skipped++
+      continue
+    }
+
     const [existingLog, attendance, recentNotification] = await Promise.all([
       prisma.dailyWorkLog.findUnique({
         where: { employeeId_date: { employeeId: employee.id, date: today } },

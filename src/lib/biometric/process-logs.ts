@@ -3,6 +3,7 @@ import type { Attendance, BiometricDevice } from "@prisma/client"
 import { buildCheckoutUpdate } from "@/lib/attendance"
 import { getSetting } from "@/lib/settings"
 import { SETTING_KEYS } from "@/lib/settings-keys"
+import { getEmployeeWorkTimes } from "@/lib/shifts"
 
 export interface BiometricLogEntry {
   biometricId: string
@@ -69,8 +70,12 @@ function resolveEventType(
   return null
 }
 
-async function determineCheckInStatus(checkInTime: Date): Promise<"PRESENT" | "LATE"> {
-  const { hour, minute } = await getWorkStartTime()
+async function determineCheckInStatus(
+  checkInTime: Date,
+  employeeId: string
+): Promise<"PRESENT" | "LATE"> {
+  const { startTime } = await getEmployeeWorkTimes(employeeId, checkInTime)
+  const [hour, minute] = startTime.split(":").map(Number)
   const threshold = await getLateThresholdMinutes()
   const deadline = new Date(checkInTime)
   deadline.setHours(hour, minute + threshold, 0, 0)
@@ -222,7 +227,7 @@ async function applyAttendanceFromLog(
   if (resolvedType === "CHECK_IN") {
     if (existingAttendance?.checkIn) return
 
-    const status = await determineCheckInStatus(logTime)
+    const status = await determineCheckInStatus(logTime, employeeId)
 
     await prisma.attendance.upsert({
       where: {
@@ -342,7 +347,7 @@ export async function processBiometricPunch(input: {
       if (existingAttendance?.checkIn) {
         throw new Error("Already checked in today")
       }
-      const status = await determineCheckInStatus(timestamp)
+      const status = await determineCheckInStatus(timestamp, employee.id)
       await prisma.attendance.upsert({
         where: {
           employeeId_date: {

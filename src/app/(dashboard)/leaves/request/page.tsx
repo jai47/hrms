@@ -23,6 +23,8 @@ import { Loader2, ArrowLeft, Calendar } from "lucide-react"
 import Link from "next/link"
 import { differenceInCalendarDays } from "date-fns"
 import { canViewAllLeaves } from "@/lib/rbac"
+import { LeaveBalanceCard } from "@/components/leaves/leave-balance-card"
+import type { LeaveBalance } from "@/lib/leave-balance"
 
 const leaveSchema = z.object({
   employeeId: z.string().min(1, "Employee is required"),
@@ -68,6 +70,7 @@ export default function LeaveRequestPage() {
   const [submitError, setSubmitError] = useState("")
   const [employees, setEmployees] = useState<EmployeeOption[]>([])
   const [totalDays, setTotalDays] = useState(0)
+  const [balance, setBalance] = useState<LeaveBalance | null>(null)
 
   const role = session?.user?.role ?? "EMPLOYEE"
   const canPickEmployee = canViewAllLeaves(role)
@@ -89,6 +92,7 @@ export default function LeaveRequestPage() {
     },
   })
 
+  const watchedEmployeeId = watch("employeeId")
   const startDate = watch("startDate")
   const endDate = watch("endDate")
 
@@ -114,6 +118,15 @@ export default function LeaveRequestPage() {
       }
     }
   }, [startDate, endDate])
+
+  useEffect(() => {
+    const targetId = canPickEmployee ? watchedEmployeeId : selfId
+    if (!targetId) return
+    fetch(`/api/leaves/balance?employeeId=${targetId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => setBalance(data))
+      .catch(() => setBalance(null))
+  }, [canPickEmployee, watchedEmployeeId, selfId])
 
   const onSubmit = async (data: LeaveForm) => {
     setIsLoading(true)
@@ -153,6 +166,8 @@ export default function LeaveRequestPage() {
           </p>
         </div>
       </div>
+
+      {balance && <LeaveBalanceCard balance={balance} />}
 
       <Card>
         <CardHeader>

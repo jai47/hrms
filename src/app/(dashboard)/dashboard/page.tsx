@@ -5,6 +5,8 @@ import { Users, Clock, Calendar, TrendingUp } from "lucide-react"
 import { formatDate } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { EmployeeDashboard } from "./employee-dashboard"
+import { UpcomingMeetingsCard } from "@/components/meetings/upcoming-meetings-card"
+import { getUpcomingMeetings } from "@/lib/meetings"
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -82,7 +84,7 @@ async function getEmployeeDashboardData(employeeId: string) {
   const tomorrow = new Date(today)
   tomorrow.setDate(tomorrow.getDate() + 1)
 
-  const [employee, attendances, todayAttendance, pendingLeaves, recentPaySlips] =
+  const [employee, attendances, todayAttendance, pendingLeaves, recentPaySlips, upcomingMeetings] =
     await Promise.all([
       prisma.employee.findUnique({
         where: { id: employeeId },
@@ -113,6 +115,7 @@ async function getEmployeeDashboardData(employeeId: string) {
         take: 3,
         select: { id: true, periodMonth: true, periodYear: true, netPay: true },
       }),
+      getUpcomingMeetings(employeeId, 5),
     ])
 
   const onTime = attendances.filter((a) => ON_TIME_STATUSES.includes(a.status)).length
@@ -140,6 +143,7 @@ async function getEmployeeDashboardData(employeeId: string) {
     })),
     pendingLeaves,
     recentPaySlips,
+    upcomingMeetings,
   }
 }
 
@@ -157,11 +161,13 @@ export default async function DashboardPage() {
         attendances={data.attendances}
         pendingLeaves={data.pendingLeaves}
         recentPaySlips={data.recentPaySlips}
+        upcomingMeetings={data.upcomingMeetings}
       />
     )
   }
 
   const stats = await getAdminStats()
+  const upcomingMeetings = await getUpcomingMeetings(undefined, 5)
 
   return (
     <div className="space-y-6">
@@ -288,6 +294,8 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <UpcomingMeetingsCard meetings={upcomingMeetings} />
     </div>
   )
 }

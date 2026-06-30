@@ -8,10 +8,12 @@ import Link from "next/link"
 import { Palette, Wifi, Loader2, Check } from "lucide-react"
 import { SETTING_KEYS } from "@/lib/settings-keys"
 import { ChangePasswordForm } from "@/components/account/change-password-form"
+import { IntegrationsSettings } from "@/components/settings/integrations-settings"
 
 type Props = {
   initialDbSettings: Record<string, string>
   counts: { employees: number; departments: number; devices: number }
+  showIntegrations?: boolean
 }
 
 function getUiValue(dbMap: Record<string, string>, uiKey: keyof typeof SETTING_KEYS): string {
@@ -19,7 +21,7 @@ function getUiValue(dbMap: Record<string, string>, uiKey: keyof typeof SETTING_K
   return dbMap[dbKey] ?? dbMap[uiKey] ?? ""
 }
 
-export function SettingsForm({ initialDbSettings, counts }: Props) {
+export function SettingsForm({ initialDbSettings, counts, showIntegrations }: Props) {
   const [values, setValues] = useState(() => ({
     companyName: getUiValue(initialDbSettings, "companyName") || "",
     companyEmail: getUiValue(initialDbSettings, "companyEmail") || "",
@@ -143,6 +145,8 @@ export function SettingsForm({ initialDbSettings, counts }: Props) {
           </CardContent>
         </Card>
       </div>
+
+      {showIntegrations && <IntegrationsSettings />}
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
+import { validateLeaveBalance } from "@/lib/leave-balance"
 import { canViewAllLeaves } from "@/lib/rbac"
 
 export async function GET(request: NextRequest) {
@@ -100,6 +101,11 @@ export async function POST(request: NextRequest) {
 
     if (days < 1) {
       return NextResponse.json({ error: "End date must be on or after start date" }, { status: 400 })
+    }
+
+    const balanceCheck = await validateLeaveBalance(employeeId, leaveType, days)
+    if (!balanceCheck.ok) {
+      return NextResponse.json({ error: balanceCheck.error }, { status: 400 })
     }
 
     // Check for overlapping leave requests

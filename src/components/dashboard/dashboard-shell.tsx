@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation"
 import { Sidebar } from "@/components/dashboard/sidebar"
 import { Header } from "@/components/dashboard/header"
 import { WorkLogReminderBanner } from "@/components/dashboard/work-log-reminder-banner"
+import { AnnouncementsBanner } from "@/components/announcements/announcements-banner"
 import { SidebarProvider } from "@/components/dashboard/sidebar-context"
 import { canAccessRoute } from "@/lib/rbac"
 
@@ -47,6 +48,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <Sidebar />
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <Header />
+          <AnnouncementsBanner />
           <WorkLogReminderBanner />
           <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 lg:p-6">
             {children}
