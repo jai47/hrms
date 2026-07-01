@@ -5,7 +5,7 @@ import {
   PutObjectCommand,
   GetObjectCommand,
 } from "@aws-sdk/client-s3"
-import type { S3Config } from "@/lib/app-config"
+import type { S3Config } from "@/lib/s3-settings"
 
 export async function testMongoConnection(uri: string): Promise<{ ok: boolean; error?: string }> {
   if (!uri?.trim()) {

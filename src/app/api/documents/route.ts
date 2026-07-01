@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
 import { canManageEmployees } from "@/lib/rbac"
-import { canUploadDocuments } from "@/lib/app-config"
+import { canUploadDocuments } from "@/lib/s3-settings"
 import { saveDocumentFile } from "@/lib/document-storage"
 
 export async function GET(request: NextRequest) {
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    if (!canUploadDocuments()) {
+    if (!(await canUploadDocuments())) {
       return NextResponse.json(
         { error: "Document storage is not configured. Enable S3 in Settings → Integrations." },
         { status: 503 }

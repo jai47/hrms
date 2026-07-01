@@ -24,6 +24,10 @@
 .DS_Store
 *.pem
 
+# runtime config (may contain secrets)
+/data/app-config.json
+/public/uploads/
+
 # debug
 npm-debug.log*
 yarn-debug.log*

@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
 import { canManageEmployees } from "@/lib/rbac"
-import { canUploadDocuments, isDocumentStorageEnabled } from "@/lib/app-config"
+import { canUploadDocuments, isDocumentStorageEnabled } from "@/lib/s3-settings"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { FileText, DollarSign, CloudOff } from "lucide-react"
@@ -98,8 +98,8 @@ export default async function DocumentsPage({
 
   const showFiles = tab === "all" || tab === "files"
   const showPayslipSection = showPayslips && (tab === "all" || tab === "payslips")
-  const uploadEnabled = canUploadDocuments()
-  const storageEnabled = isDocumentStorageEnabled()
+  const uploadEnabled = await canUploadDocuments()
+  const storageEnabled = await isDocumentStorageEnabled()
 
   const employees =
     viewAll && uploadEnabled

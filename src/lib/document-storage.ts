@@ -1,12 +1,7 @@
 import { readFile } from "fs/promises"
 import path from "path"
 import { randomUUID } from "crypto"
-import {
-  readAppConfig,
-  isS3FileRef,
-  canUploadDocuments,
-  type S3Config,
-} from "@/lib/app-config"
+import { canUploadDocuments, getS3Config, isS3FileRef } from "@/lib/s3-settings"
 import { getDocumentFilePath, getDocumentMimeType } from "@/lib/documents"
 import { uploadToS3, downloadFromS3, s3KeyFromFileRef } from "@/lib/integrations"
 
@@ -28,14 +23,8 @@ function isAllowedFile(file: File): boolean {
   return !file.type || file.type === "application/octet-stream"
 }
 
-function getS3Config(): S3Config {
-  const config = readAppConfig()
-  if (!config.s3) throw new Error("S3 is not configured")
-  return config.s3
-}
-
 export async function saveDocumentFile(file: File): Promise<string> {
-  if (!canUploadDocuments()) {
+  if (!(await canUploadDocuments())) {
     throw new Error("Document storage is not configured. Enable S3 in Settings → Integrations.")
   }
 
@@ -47,7 +36,7 @@ export async function saveDocumentFile(file: File): Promise<string> {
     throw new Error("File type not allowed. Use PDF, Word, or image files.")
   }
 
-  const s3 = getS3Config()
+  const s3 = await getS3Config()
   const ext = path.extname(file.name) || ""
   const prefix = s3.prefix || "documents"
   const key = `${prefix}/${randomUUID()}${ext}`
@@ -59,7 +48,7 @@ export async function saveDocumentFile(file: File): Promise<string> {
 
 export async function readDocumentFile(fileUrl: string): Promise<Buffer> {
   if (isS3FileRef(fileUrl)) {
-    const s3 = getS3Config()
+    const s3 = await getS3Config()
     const key = s3KeyFromFileRef(fileUrl, s3.prefix || "documents")
     return downloadFromS3(s3, key)
   }
